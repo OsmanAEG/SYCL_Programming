@@ -23,44 +23,33 @@ int main(){
   // allocating memory on host
   std::array<int, SIZE> Arr_host;
 
-  // allocating memory on device
-  int *Arr_device = sycl::malloc_device<int>(SIZE, Q);
-
-  // filling the host array with index values
+  // initializing host array
   for(int i = 0; i < SIZE; ++i){
     Arr_host[i] = i;
   }
 
-  // copying host to device
-  Q.submit([&](sycl::handler &h){
-    h.memcpy(Arr_device, &Arr_host[0], SIZE*sizeof(int));
-  });
-
-  Q.wait();
+  // initializing devide buffer
+  sycl::buffer Arr_buffer(Arr_host);
 
   // incrementing array values on device
   Q.submit([&](sycl::handler &h){
+    sycl::accessor Arr_accessor(Arr_buffer, h);
+
     h.parallel_for(SIZE, [=](sycl::id<1> idx){
-      Arr_device[idx]++;
+      Arr_accessor[idx]++;
     });
   });
 
   Q.wait();
 
-  // copying device to host
-  Q.submit([&](sycl::handler &h){
-    h.memcpy(&Arr_host[0], Arr_device, SIZE*sizeof(int));
-  });
-
-  Q.wait();
+  sycl::host_accessor Arr_host_accessor(Arr_buffer);
 
   // checking results
   for(int i = 0; i < SIZE; ++i){
-    assert(Arr_host[i] = i + 1);
+    assert(Arr_host_accessor[i] = i + 1);
   }
 
   std::cout << "The results are correct!" << std::endl;
 
-  sycl::free(Arr_device, Q);
   return 0;
 }
