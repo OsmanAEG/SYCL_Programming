@@ -19,6 +19,7 @@ void print_device(Queue_type& Q, String_type name){
 int main(){
   // establishing gpu for device queue
   sycl::queue Q{sycl::gpu_selector_v};
+  print_device(Q);
 
   // allocating memory on host
   std::array<int, SIZE> Arr_host;
