@@ -95,7 +95,7 @@ int main(){
 
   // checking results
   for(int i = 0; i < SIZE; ++i){
-    assert(Arr3_host_accessor[i] = (i+1) + (i-1) + (i+2));
+    assert(Arr3_host_accessor[i] == (i+1) + (i-1) + (i+2));
   }
 
   std::cout << "The results are correct!" << std::endl;

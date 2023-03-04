@@ -46,7 +46,7 @@ int main(){
 
   // checking results
   for(int i = 0; i < SIZE; ++i){
-    assert(Arr_host_accessor[i] = i + 1);
+    assert(Arr_host_accessor[i] == i + 1);
   }
 
   std::cout << "The results are correct!" << std::endl;
