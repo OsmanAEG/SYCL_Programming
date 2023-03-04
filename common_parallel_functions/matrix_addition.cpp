@@ -15,11 +15,13 @@ void print_device(Queue_type& Q){
 
 // parallel vector addition
 template<typename Queue_type, typename Scalar_type>
-void parallel_vector_addition(Queue_type Q, Scalar_type* A, Scalar_type* B,
-                              Scalar_type* C, size_t SIZE){
+void parallel_matrix_addition(Queue_type Q, Scalar_type* A, Scalar_type* B,
+                              Scalar_type* C, size_t M, size_t N){
   Q.submit([&](sycl::handler &h){
-    h.parallel_for(SIZE, [=](sycl::id<1> idx){
-      C[idx] = A[idx] + B[idx];
+    h.parallel_for(sycl::range{M, N}, [=](sycl::id<2> idx){
+      int i = idx[0];
+      int j = idx[1];
+      C[i + M*j] = A[i + M*j] + B[i + M*j];
     });
   }).wait();
 }
@@ -30,15 +32,16 @@ int main(){
   print_device(Q);
 
   // vector dimensional value
-  constexpr size_t SIZE = 512;
+  constexpr size_t M = 512;
+  constexpr size_t N = 512;
 
   // tolerance
   const double tol = 1.0E-6;
 
   // vectors on host memory
-  std::vector<double> A_host(SIZE);
-  std::vector<double> B_host(SIZE);
-  std::vector<double> C_host(SIZE);
+  std::vector<double> A_host(M*N);
+  std::vector<double> B_host(M*N);
+  std::vector<double> C_host(M*N);
 
   // filling the input and output vectors on host
   std::fill(A_host.begin(), A_host.end(), 8.39);
@@ -46,28 +49,28 @@ int main(){
   std::fill(C_host.begin(), C_host.end(), 0.00);
 
   // allocating device memory
-  double *A_device = sycl::malloc_device<double>(SIZE, Q);
-  double *B_device = sycl::malloc_device<double>(SIZE, Q);
-  double *C_device = sycl::malloc_device<double>(SIZE, Q);
+  double *A_device = sycl::malloc_device<double>(M*N, Q);
+  double *B_device = sycl::malloc_device<double>(M*N, Q);
+  double *C_device = sycl::malloc_device<double>(M*N, Q);
 
   // copying host to device memory
-  Q.memcpy(A_device, &A_host[0], SIZE*sizeof(double));
-  Q.memcpy(B_device, &B_host[0], SIZE*sizeof(double));
-  Q.memcpy(C_device, &C_host[0], SIZE*sizeof(double));
+  Q.memcpy(A_device, &A_host[0], M*N*sizeof(double));
+  Q.memcpy(B_device, &B_host[0], M*N*sizeof(double));
+  Q.memcpy(C_device, &C_host[0], M*N*sizeof(double));
 
-  parallel_vector_addition(Q, A_device, B_device, C_device, SIZE);
+  parallel_matrix_addition(Q, A_device, B_device, C_device, M, N);
 
   // copying device to host memory
-  Q.memcpy(&A_host[0], A_device, SIZE*sizeof(double));
-  Q.memcpy(&B_host[0], B_device, SIZE*sizeof(double));
-  Q.memcpy(&C_host[0], C_device, SIZE*sizeof(double));
+  Q.memcpy(&A_host[0], A_device, M*N*sizeof(double));
+  Q.memcpy(&B_host[0], B_device, M*N*sizeof(double));
+  Q.memcpy(&C_host[0], C_device, M*N*sizeof(double));
 
   // confirming results
-  for(int i = 0; i < SIZE; ++i){
+  for(int i = 0; i < M*N; ++i){
     assert(C_host[i] == A_host[i] + B_host[i]);
   }
 
-  std::cout << "The parallel vector addition was successful!" << std::endl;
+  std::cout << "The parallel matrix addition was successful!" << std::endl;
 
   return 0;
 }
