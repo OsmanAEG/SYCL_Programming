@@ -66,8 +66,10 @@ int main(){
   Q.memcpy(&C_host[0], C_device, M*N*sizeof(double));
 
   // confirming results
-  for(int i = 0; i < M*N; ++i){
-    assert(C_host[i] == A_host[i] + B_host[i]);
+  for(int i = 0; i < M; ++i){
+    for(int j = 0; j < M; ++j){
+      assert(C_host[i + M*j] == A_host[i + M*j] + B_host[i + M*j]);
+    }
   }
 
   std::cout << "The parallel matrix addition was successful!" << std::endl;
