@@ -13,7 +13,7 @@ void print_device(Queue_type& Q){
             << "\n" << std::endl;
 }
 
-// parallel vector addition
+// parallel matrix addition
 template<typename Queue_type, typename Scalar_type>
 void parallel_matrix_addition(Queue_type Q, Scalar_type* A, Scalar_type* B,
                               Scalar_type* C, size_t M, size_t N){
@@ -31,19 +31,19 @@ int main(){
   sycl::queue Q{sycl::gpu_selector_v};
   print_device(Q);
 
-  // vector dimensional value
+  // matrix dimensional value
   constexpr size_t M = 512;
   constexpr size_t N = 256;
 
   // tolerance
   const double tol = 1.0E-6;
 
-  // vectors on host memory
+  // matrices on host memory
   std::vector<double> A_host(M*N);
   std::vector<double> B_host(M*N);
   std::vector<double> C_host(M*N);
 
-  // filling the input and output vectors on host
+  // filling the input and output matrices on host
   std::fill(A_host.begin(), A_host.end(), 8.39);
   std::fill(B_host.begin(), B_host.end(), 2.67);
   std::fill(C_host.begin(), C_host.end(), 0.00);
