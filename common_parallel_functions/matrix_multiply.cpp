@@ -60,6 +60,38 @@ void nd_range_parallel_matrix_multiplication(Queue_type Q, Scalar_type* A, Scala
   }).wait();
 }
 
+// hierarchical parallel matrix multiplication
+template<typename Queue_type, typename Scalar_type>
+void hierarchical_parallel_matrix_multiplication(Queue_type Q, Scalar_type* A, Scalar_type* B,
+                                                 Scalar_type* C, size_t M, size_t N, size_t K,
+                                                 size_t b){
+  Q.submit([&](sycl::handler &h){
+    // number of groups
+    sycl::range num_groups{M/b, K/b};
+
+    // group size
+    sycl::range group_size{b, b};
+
+    h.parallel_for_work_group(num_groups, group_size, [=](sycl::group<2> grp){
+      int ib = grp.get_group_id(0);
+      int jb = grp.get_group_id(1);
+
+      grp.parallel_for_work_item([&](sycl::h_item<2> it){
+        int i = ib*b + it.get_local_id(0);
+        int j = jb*b + it.get_local_id(1);
+
+        Scalar_type c_ij = 0.0;
+
+        for(int p = 0; p < N; ++p){
+          c_ij += A[i*N + p]*B[p*K + j];
+        }
+
+        C[i*K + j] = c_ij;
+      });
+    });
+  }).wait();
+}
+
 int main(){
   // establishing gpu for device queue
   sycl::queue Q{sycl::gpu_selector_v};
@@ -67,8 +99,8 @@ int main(){
 
   // matrix dimensional value
   constexpr size_t M = 512;
-  constexpr size_t N = 256;
-  constexpr size_t K = 1024;
+  constexpr size_t N = 512;
+  constexpr size_t K = 512;
 
   // local work group size
   constexpr size_t b = 4;
@@ -105,7 +137,8 @@ int main(){
   Q.memcpy(C_device, &C_host[0], M*K*sizeof(double));
 
   //parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K);
-  nd_range_parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K, b);
+  //nd_range_parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K, b);
+  hierarchical_parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K, b);
 
   // copying device to host memory
   Q.memcpy(&C_host[0], C_device, M*K*sizeof(double));
