@@ -34,6 +34,32 @@ void parallel_matrix_multiplication(Queue_type Q, Scalar_type* A, Scalar_type* B
   }).wait();
 }
 
+// nd-range parallel matrix multiplication
+template<typename Queue_type, typename Scalar_type>
+void nd_range_parallel_matrix_multiplication(Queue_type Q, Scalar_type* A, Scalar_type* B,
+                                             Scalar_type* C, size_t M, size_t N, size_t K,
+                                             size_t b){
+  Q.submit([&](sycl::handler &h){
+    // global nd range problem size
+    sycl::range global{M, K};
+
+    // local workgroup size
+    sycl::range local{b, b};
+
+    h.parallel_for(sycl::nd_range{global, local}, [=](sycl::nd_item<2> it){
+      int i = it.get_global_id(0);
+      int j = it.get_global_id(1);
+
+      Scalar_type c_ij = 0.0;
+
+      for(int p = 0; p < N; ++p){
+        c_ij += A[i*N + p]*B[p*K + j];
+      }
+      C[i*K + j] = c_ij;
+    });
+  }).wait();
+}
+
 int main(){
   // establishing gpu for device queue
   sycl::queue Q{sycl::gpu_selector_v};
@@ -43,6 +69,9 @@ int main(){
   constexpr size_t M = 512;
   constexpr size_t N = 256;
   constexpr size_t K = 1024;
+
+  // local work group size
+  constexpr size_t b = 4;
 
   // tolerance
   const double tol = 1.0E-6;
@@ -75,7 +104,8 @@ int main(){
   Q.memcpy(B_device, &B_host[0], N*K*sizeof(double));
   Q.memcpy(C_device, &C_host[0], M*K*sizeof(double));
 
-  parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K);
+  //parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K);
+  nd_range_parallel_matrix_multiplication(Q, A_device, B_device, C_device, M, N, K, b);
 
   // copying device to host memory
   Q.memcpy(&C_host[0], C_device, M*K*sizeof(double));
