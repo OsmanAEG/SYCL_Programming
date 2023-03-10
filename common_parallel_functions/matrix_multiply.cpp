@@ -130,8 +130,8 @@ int main(){
   print_device(Q);
 
   // matrix dimensional value
-  constexpr size_t M = 512;
-  constexpr size_t N = 512;
+  constexpr size_t M = 256;
+  constexpr size_t N = 1024;
   constexpr size_t K = 512;
 
   // local work group size
