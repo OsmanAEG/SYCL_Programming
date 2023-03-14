@@ -31,6 +31,18 @@ void asynchronous_task_graph(Queue_type Q, Int_type SIZE){
 }
 
 // synchronous error caused from a larger sub buffer
+template<typename Queue_type, typename Int_type>
+void larger_sub_buffer(Queue_type Q, Int_type SIZE){
+  sycl::buffer<double> buf_works{sycl::range{SIZE}};
+  sycl::buffer<double> sub_buf_works(buf_works, sycl::id{4}, sycl::range{SIZE/4});
+
+  std::cout << "The sub buffer worked!" << std::endl;
+
+  sycl::buffer<double> buf_fails{sycl::range{SIZE}};
+  sycl::buffer<double> sub_buf_fails(buf_works, sycl::id{4}, sycl::range{SIZE});
+
+  std::cout << "The sub buffer worked!" << std::endl;
+}
 
 int main(){
   // establishing gpu for device queue
@@ -41,7 +53,7 @@ int main(){
   constexpr size_t SIZE = 128;
 
   // testing error examples
-  asynchronous_task_graph(Q, SIZE);
-
+  //asynchronous_task_graph(Q, SIZE);
+  larger_sub_buffer(Q, SIZE);
   return 0;
 }
