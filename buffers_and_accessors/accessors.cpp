@@ -54,7 +54,7 @@ void first_example(Queue_type Q){
     assert(fabs(host_output[i] - 13.9) < tol);
   }
 
-  std::cout << "The vector addition results are correct!" << std::endl;
+  std::cout << "The first example vector addition results are correct!" << std::endl;
 }
 
 // second example
@@ -97,7 +97,7 @@ void second_example(Queue_type Q){
     assert(fabs(host_output[i] - 13.9) < tol);
   }
 
-  std::cout << "The vector addition results are correct!" << std::endl;
+  std::cout << "The second example vector addition results are correct!" << std::endl;
 }
 
 int main(){
@@ -106,7 +106,7 @@ int main(){
   print_device(Q);
 
   // examples
-  //first_example(Q);
+  first_example(Q);
   second_example(Q);
 
   return 0;
