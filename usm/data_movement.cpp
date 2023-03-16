@@ -60,10 +60,44 @@ void explicit_data_movement(Queue_type Q){
   sycl::free(A_device, Q);
 }
 
+// implicit usm data movement
+template<typename Queue_type>
+void implicit_data_movement(Queue_type Q){
+  double* A_host   = sycl::malloc_host<double>(SIZE, Q);
+  double* A_shared = sycl::malloc_shared<double>(SIZE, Q);
+
+  // filling up the host array
+  for(int i = 0; i < SIZE; ++i){
+    A_host[i] = i;
+  }
+
+  // task
+  Q.submit([&](sycl::handler& h){
+    h.parallel_for(SIZE, [=](sycl::id<1> idx){
+      const auto i = idx[0];
+      A_shared[i] = A_host[i]*i;
+    });
+  });
+
+  Q.wait();
+
+  // checking results
+  for(int i = 0; i < SIZE; ++i){
+    assert(fabs(A_shared[i] - i*i) < tol);
+  }
+
+  std::cout << "The implicit data movement was successful!" << std::endl;
+
+  // free memory
+  sycl::free(A_host, Q);
+  sycl::free(A_shared, Q);
+}
+
 int main(){
   // establishing gpu for device queue
   sycl::queue Q{sycl::gpu_selector_v};
   print_device(Q);
 
   explicit_data_movement(Q);
+  implicit_data_movement(Q);
 }
