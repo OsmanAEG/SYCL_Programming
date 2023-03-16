@@ -54,7 +54,7 @@ void example_prefetch_case(Queue_type Q){
 
   for(int i = 0; i < number_of_blocks; ++i){
     for(int j = 0; j < number_of_threads; ++j){
-      assert(A_shared[j] - j < tol);
+      assert(fabs(A_shared[j] - j) < tol);
     }
   }
 
