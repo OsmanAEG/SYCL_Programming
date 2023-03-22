@@ -22,8 +22,11 @@ void check_equal(Scalar_type A, Scalar_type B, Tolerance_type tol){
 }
 
 // in order linear dependence
-template<typename Queue_type>
-void in_order_linear_dependance(Queue_type Q){
+void in_order_linear_dependance(){
+  // establishing gpu for device queue
+  sycl::queue Q{sycl::gpu_selector_v, sycl::property::queue::in_order()};
+  print_device(Q);
+
   double *A = sycl::malloc_shared<double>(SIZE, Q);
 
   Q.parallel_for(SIZE, [=](sycl::id<1> idx){
@@ -41,12 +44,15 @@ void in_order_linear_dependance(Queue_type Q){
 
   const double result = (SIZE)*(SIZE-1.0)*0.5;
 
-  check_equal(A[0], result, 1.0E-6);
+  check_equal(A[0], result, tol);
 }
 
 // event linear dependance
-template<typename Queue_type>
-void event_linear_dependance(Queue_type Q){
+void event_linear_dependance(){
+  // establishing gpu for device queue
+  sycl::queue Q{sycl::gpu_selector_v};
+  print_device(Q);
+
   double *A = sycl::malloc_shared<double>(SIZE, Q);
 
   auto event = Q.parallel_for(SIZE, [=](sycl::id<1> idx){
@@ -67,12 +73,15 @@ void event_linear_dependance(Queue_type Q){
 
   const double result = (SIZE)*(SIZE-1.0)*0.5;
 
-  check_equal(A[0], result, 1.0E-6);
+  check_equal(A[0], result, tol);
 }
 
 // buffer in order linear dependance
-template<typename Queue_type>
-void buffer_in_order_linear_dependance(Queue_type Q){
+void buffer_in_order_linear_dependance(){
+  // establishing gpu for device queue
+  sycl::queue Q{sycl::gpu_selector_v};
+  print_device(Q);
+
   sycl::buffer<double> A_buffer{sycl::range{SIZE}};
 
   Q.submit([&](sycl::handler &h){
@@ -96,17 +105,13 @@ void buffer_in_order_linear_dependance(Queue_type Q){
 
   const double result = (SIZE)*(SIZE-1.0)*0.5;
 
-  check_equal(A_host[0], result, 1.0E-6);
+  check_equal(A_host[0], result, tol);
 }
 
 int main(){
-  // establishing gpu for device queue
-  sycl::queue Q{sycl::gpu_selector_v, sycl::property::queue::in_order()};
-  print_device(Q);
-
   // running functions
-  in_order_linear_dependance(Q);
-  event_linear_dependance(Q);
-  buffer_in_order_linear_dependance(Q);
+  in_order_linear_dependance();
+  event_linear_dependance();
+  buffer_in_order_linear_dependance();
   return 0;
 }
