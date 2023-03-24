@@ -10,10 +10,12 @@ extern const size_t M = 256;
 extern const size_t N = 128;
 extern const size_t K = 512;
 
+extern constexpr int tile_size = 32;
+
 static const int attempts = 10;
 
 // matrix multiplication selection type
-static const int selection = 0;
+static const int selection = 1;
 
 // prints device name
 template<typename Queue_type>
@@ -76,6 +78,50 @@ void basic_matrix_multiply(Queue_type Q, std::vector<Scalar_type>& A,
   Q.wait();
 }
 
+// ndrange tiled matrix multiply
+template<typename Queue_type, typename Scalar_type>
+void ndrange_tiled_matrix_multiply(Queue_type Q, std::vector<Scalar_type>& A,
+                                                 std::vector<Scalar_type>& B,
+                                                 std::vector<Scalar_type>& C){
+  sycl::buffer<Scalar_type, 2> A_buffer{A.data(), sycl::range<2>{M, K}};
+  sycl::buffer<Scalar_type, 2> B_buffer{B.data(), sycl::range<2>{K, N}};
+  sycl::buffer<Scalar_type, 2> C_buffer{C.data(), sycl::range<2>{M, N}};
+
+  Q.submit([&](sycl::handler& h){
+    sycl::accessor A_access{A_buffer, h, sycl::read_only};
+    sycl::accessor B_access{B_buffer, h, sycl::read_only};
+    sycl::accessor C_access{C_buffer, h, sycl::read_write};
+
+    // matrix tile local access
+    auto tile_access = sycl::local_accessor<Scalar_type, 1>(tile_size, h);
+
+    h.parallel_for(sycl::nd_range<2>{{M, N}, {1, tile_size}}, [=](sycl::nd_item<2> it){
+      const int i = it.get_global_id()[0];
+      const int j = it.get_global_id()[1];
+
+      const int x = it.get_local_id()[1];
+
+      Scalar_type c_ij = 0;
+
+      for(int kk = 0; kk < K; kk += tile_size){
+        tile_access[x] = A_access[i][kk + x];
+
+        sycl::group_barrier(it.get_group());
+
+        for(int k = 0; k < tile_size; ++k){
+          c_ij += tile_access[k] * B_access[kk + k][j];
+        }
+
+        sycl::group_barrier(it.get_group());
+      }
+
+      C_access[i][j] = c_ij;
+    });
+  });
+
+  Q.wait();
+}
+
 // benchmark time
 template<typename Queue_type, typename Scalar_type>
 void time_bench(Queue_type Q, std::vector<Scalar_type>& A,
@@ -93,6 +139,9 @@ void time_bench(Queue_type Q, std::vector<Scalar_type>& A,
     if constexpr (selection == 0){
       basic_matrix_multiply(Q, A, B, C);
     }
+    else{
+      ndrange_tiled_matrix_multiply(Q, A, B, C);
+    }
 
     auto time = std::chrono::duration_cast<ns>(interval).count();
     min_time = std::min(time, min_time);
@@ -102,11 +151,14 @@ void time_bench(Queue_type Q, std::vector<Scalar_type>& A,
 
 template<typename Queue_type, typename Scalar_type>
 void unit_test(Queue_type Q, std::vector<Scalar_type>& A,
-                              std::vector<Scalar_type>& B,
-                              std::vector<Scalar_type>& C){
+                             std::vector<Scalar_type>& B,
+                             std::vector<Scalar_type>& C){
 
   if constexpr (selection == 0){
     basic_matrix_multiply(Q, A, B, C);
+  }
+  else{
+    ndrange_tiled_matrix_multiply(Q, A, B, C);
   }
 }
 
