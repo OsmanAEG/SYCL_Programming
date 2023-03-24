@@ -12,6 +12,9 @@ extern const size_t K = 512;
 
 static const int attempts = 10;
 
+// matrix multiplication selection type
+static const int selection = 0;
+
 // prints device name
 template<typename Queue_type>
 void print_device(Queue_type& Q){
@@ -38,22 +41,8 @@ void check_matrix_multiply(std::vector<Scalar_type> A,
       assert(std::fabs(C[i*N + j] - c_ij) < tol);
     }
   }
-}
 
-// benchmark time
-void time_bench(int selection){
-  // clock
-  using ns = std::chrono::nanoseconds;
-  ns::rep min_time = std::numeric_limits<ns::rep>::max();
-
-  // running the test
-  for(int i = 0; i < attempts; ++i){
-    auto start_time = std::chrono::steady_clock::now();
-    auto interval = std::chrono::steady_clock::now() - start_time;
-
-    auto time = std::chrono::duration_cast<ns>(interval).count();
-    min_time = std::min(time, min_time);
-  }
+  std::cout << "The matrix multiply results are correct!" << std::endl;
 }
 
 // basic matrix multiply
@@ -87,11 +76,47 @@ void basic_matrix_multiply(Queue_type Q, std::vector<Scalar_type>& A,
   Q.wait();
 }
 
+// benchmark time
+template<typename Queue_type, typename Scalar_type>
+void time_bench(Queue_type Q, std::vector<Scalar_type>& A,
+                              std::vector<Scalar_type>& B,
+                              std::vector<Scalar_type>& C){
+  // clock
+  using ns = std::chrono::nanoseconds;
+  ns::rep min_time = std::numeric_limits<ns::rep>::max();
+
+  // running the test
+  for(int i = 0; i < attempts; ++i){
+    auto start_time = std::chrono::steady_clock::now();
+    auto interval = std::chrono::steady_clock::now() - start_time;
+
+    if constexpr (selection == 0){
+      basic_matrix_multiply(Q, A, B, C);
+    }
+
+    auto time = std::chrono::duration_cast<ns>(interval).count();
+    min_time = std::min(time, min_time);
+  }
+  std::cout << "The minimum execution time is " << min_time << " ns!" << std::endl;
+}
+
+template<typename Queue_type, typename Scalar_type>
+void unit_test(Queue_type Q, std::vector<Scalar_type>& A,
+                              std::vector<Scalar_type>& B,
+                              std::vector<Scalar_type>& C){
+
+  if constexpr (selection == 0){
+    basic_matrix_multiply(Q, A, B, C);
+  }
+}
 
 int main(){
   // establishing gpu for device queue
   sycl::queue Q{sycl::gpu_selector_v};
   print_device(Q);
+
+  // tolerance value
+  const double tol = 1.0E-6;
 
   // creating input and output vectors
   std::vector<double> A(M*K);
@@ -111,11 +136,14 @@ int main(){
   std::generate(B.begin(), B.end(), random_number_generator);
   std::fill(C.begin(), C.end(), 0.0);
 
-  basic_matrix_multiply(Q, A, B, C);
+  // matrix multiply test
+  unit_test(Q, A, B, C);
 
-  for(int i = 0; i < M*N; ++i){
-    std::cout << C[i] << std::endl;
-  }
+  // timed benchmark matrix multiply
+  //time_bench(Q, A, B, C);
+
+  // validating the results of the matrix multiply
+  check_matrix_multiply(A, B, C, tol);
 
   return 0;
 }
