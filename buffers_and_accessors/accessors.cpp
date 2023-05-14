@@ -4,7 +4,7 @@
 constexpr int SIZE = 64;
 constexpr double tol = 1.0E-6;
 
-// prints device name
+// prints the device name
 template<typename Queue_type>
 void print_device(Queue_type& Q){
   std::cout << "DEVICE: "
